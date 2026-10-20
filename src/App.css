@@ -1,38 +1,78 @@
-.App {
-  text-align: center;
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.dashboard-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.dashboard-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  margin-bottom: 30px;
+  background: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.App-link {
-  color: #61dafb;
+.dashboard-header h1 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.status-servidor {
+  background: #e6f4ea;
+  color: #1e8e3e;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.machines-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.machine-card {
+  background: white;
+  border-left: 5px solid #1a73e8;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.machine-card:hover {
+  transform: translateY(-5px);
+}
+
+.machine-card h2 {
+  margin: 0 0 10px 0;
+  color: #1a73e8;
+}
+
+.machine-card hr {
+  border: 0;
+  height: 1px;
+  background: #eee;
+  margin: 15px 0;
+}
+
+.mensagem {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-top: 50px;
+}
+
+.erro {
+  color: #d93025;
 }
