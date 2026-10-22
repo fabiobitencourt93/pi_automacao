@@ -20,17 +20,70 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Cria a rota para buscar os dados das máquinas
+// Cria a rota para buscar os dados das máquinas e o seu estado em tempo real
 app.get('/api/machines', async (req, res) => {
-  const { data, error } = await supabase
-    .from('machines') // Certifique-se de que a tabela no Supabase tem exatamente este nome
-    .select('*');
+  console.log("👉 [1/3] Recebi um pedido do React para a rota /api/machines");
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  try {
+    const { data: machines, error: machinesError } = await supabase
+      .from('machines')
+      .select('*');
+
+    if (machinesError) {
+      console.error("❌ Erro ao buscar máquinas:", machinesError.message);
+      return res.status(500).json({ error: machinesError.message });
+    }
+
+    // Proteção: Se a tabela estiver vazia ou nula
+    if (!machines) {
+      console.log("⚠️ Nenhuma máquina encontrada na tabela.");
+      return res.json([]);
+    }
+
+    console.log(`✅ [2/3] Encontrei ${machines.length} máquinas. A juntar com a telemetria...`);
+
+    // (Dentro da rota GET /api/machines, procure este bloco e substitua)
+    // ...
+    const machinesWithStatus = await Promise.all(machines.map(async (machine) => {
+      const { data: logs, error: logsError } = await supabase
+        .from('telemetry_logs')
+        // ADICIONAMOS TODAS AS COLUNAS AQUI:
+        .select('status, oee, current_program, part_count, spindle_load, feed_rate, spindle_speed, wire_tension, tonnage, strokes_per_min, active_alarms')
+        .eq('machine_id', machine.id)
+        .order('timestamp', { ascending: false })
+        .limit(1);
+
+      if (logsError) console.error(`❌ Erro:`, logsError.message);
+
+      const latest = logs && logs.length > 0 ? logs[0] : {};
+
+      return {
+        ...machine,
+        status: latest.status || 'Desconectada',
+        oee: latest.oee || 0,
+        current_program: latest.current_program || '-',
+        part_count: latest.part_count || 0,
+        spindle_load: latest.spindle_load || 0,
+        feed_rate: latest.feed_rate || 0,
+        spindle_speed: latest.spindle_speed || 0,
+        wire_tension: latest.wire_tension || 0,
+        tonnage: latest.tonnage || 0,
+        strokes_per_min: latest.strokes_per_min || 0,
+        active_alarms: latest.active_alarms || [],
+        voltage: latest.voltage || 0,
+        current: latest.current || 0
+      };
+    }));
+    // ...
+
+    console.log("🚀 [3/3] Tudo pronto! A enviar dados completos para o React.");
+    res.json(machinesWithStatus);
+
+  } catch (erroGeral) {
+    // Esta é a rede de segurança que apanha falhas silenciosas!
+    console.error("💥 ERRO CRÍTICO NA ROTA:", erroGeral);
+    res.status(500).json({ error: "Erro interno no servidor" });
   }
-  
-  res.json(data);
 });
 
 // Define a porta e liga o servidor
