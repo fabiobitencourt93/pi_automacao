@@ -5,11 +5,11 @@ const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
-// Permite que o seu React (rodando em outra porta) acesse este servidor
+// Permite que o seu React aceda a este servidor
 app.use(cors());
 app.use(express.json());
 
-// Inicializa a conexão com o Supabase usando as chaves do seu arquivo .env
+// Inicializa a conexão com o Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
@@ -34,21 +34,18 @@ app.get('/api/machines', async (req, res) => {
       return res.status(500).json({ error: machinesError.message });
     }
 
-    // Proteção: Se a tabela estiver vazia ou nula
-    if (!machines) {
+    if (!machines || machines.length === 0) {
       console.log("⚠️ Nenhuma máquina encontrada na tabela.");
       return res.json([]);
     }
 
     console.log(`✅ [2/3] Encontrei ${machines.length} máquinas. A juntar com a telemetria...`);
 
-    // (Dentro da rota GET /api/machines, procure este bloco e substitua)
-    // ...
     const machinesWithStatus = await Promise.all(machines.map(async (machine) => {
       const { data: logs, error: logsError } = await supabase
         .from('telemetry_logs')
-        // ADICIONAMOS TODAS AS COLUNAS AQUI:
-        .select('status, oee, current_program, part_count, spindle_load, feed_rate, spindle_speed, wire_tension, tonnage, strokes_per_min, active_alarms')
+        // CORREÇÃO: voltage e current adicionados ao select
+        .select('status, oee, current_program, part_count, spindle_load, feed_rate, spindle_speed, wire_tension, tonnage, strokes_per_min, active_alarms, voltage, current')
         .eq('machine_id', machine.id)
         .order('timestamp', { ascending: false })
         .limit(1);
@@ -74,19 +71,16 @@ app.get('/api/machines', async (req, res) => {
         current: latest.current || 0
       };
     }));
-    // ...
 
     console.log("🚀 [3/3] Tudo pronto! A enviar dados completos para o React.");
     res.json(machinesWithStatus);
 
   } catch (erroGeral) {
-    // Esta é a rede de segurança que apanha falhas silenciosas!
     console.error("💥 ERRO CRÍTICO NA ROTA:", erroGeral);
     res.status(500).json({ error: "Erro interno no servidor" });
   }
 });
 
-// Define a porta e liga o servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor da Ferramentaria rodando com sucesso na porta ${PORT}`);
@@ -94,19 +88,31 @@ app.listen(PORT, () => {
 
 // Rota POST: Recebe dados em tempo real do chão de fábrica (Node-RED)
 app.post('/api/telemetry', async (req, res) => {
-  // Pega nos dados que o Node-RED (ou simulador) enviou no corpo da requisição
-  const telemetryData = req.body;
-
-  // Grava diretamente na tabela telemetry_logs do Supabase
+  // CORREÇÃO: Mapeamento explícito para garantir a gravação de voltage e current
   const { data, error } = await supabase
     .from('telemetry_logs')
-    .insert([telemetryData]);
+    .insert([{
+      machine_id: req.body.machine_id,
+      status: req.body.status,
+      timestamp: req.body.timestamp,
+      oee: req.body.oee,
+      current_program: req.body.current_program,
+      part_count: req.body.part_count,
+      spindle_speed: req.body.spindle_speed || 0,
+      spindle_load: req.body.spindle_load || 0,
+      feed_rate: req.body.feed_rate || 0,
+      wire_tension: req.body.wire_tension || 0,
+      tonnage: req.body.tonnage || 0,
+      strokes_per_min: req.body.strokes_per_min || 0,
+      active_alarms: req.body.active_alarms || [],
+      voltage: req.body.voltage || 0,
+      current: req.body.current || 0
+    }]);
 
   if (error) {
     console.error("Erro ao gravar telemetria:", error.message);
     return res.status(500).json({ error: "Falha ao gravar no banco de dados" });
   }
 
-  // Devolve um 201 (Created) para confirmar que deu certo
   res.status(201).json({ message: "Dados de produção registados com sucesso!" });
 });
